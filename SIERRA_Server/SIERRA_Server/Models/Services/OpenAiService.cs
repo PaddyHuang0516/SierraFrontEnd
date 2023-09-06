@@ -154,8 +154,8 @@ namespace SIERRA_Server.Models.Services
             if (cateKeywords.Any(cateKeywords => text.Contains(cateKeywords)))
             {
                 systemMessage.AppendLine("你是一個我們甜點店做專業客戶服務的人員，當有人詢問有什麼蛋糕類別，你只回答\"整模蛋糕\",\"常溫蛋糕\",\"長條蛋糕\",\"點心\",\"禮盒\"。");
+}
 
-            }
 
             //member coupon
             string[] couponKeywords = { "優惠券", "coupon", "折扣", "優待" };
