@@ -13,6 +13,7 @@ namespace SIERRA_Server.Models.Services
     public class MemberCouponService
 	{
 		private IMemberCouponRepository _repo;
+		private AppDbContext _db;
 		public MemberCouponService(IMemberCouponRepository repo)
         {
             _repo = repo;
@@ -464,6 +465,36 @@ namespace SIERRA_Server.Models.Services
 			var result = await _repo.GetUsingCoupon(memberId);
 			return result;
         }
+        public async Task<object?> DidMemberPlayedGame(int memberId)
+        {
+            var dailyGame = await _repo.HasPlayedGame(memberId);
+            var weeklyGame = await _repo.HasPlayedWeeklyGame(memberId);
+            return new { DailyGame = dailyGame, WeeklyGame = weeklyGame };
+        }
+
+        public void LetMembersCanPlayDailyGame()
+        {
+            _repo.LetMembersCanPlayDailyGame();
+        }
+
+        public void LetMembersCanPlayWeeklyGame()
+        {
+			_repo.LetMembersCanPlayWeeklyGame();
+        }
+        public void GiveMemberCouponWhoBirthInThisMonth()
+        {
+			var members = _repo.GetBirthdayMemberInThisMonth();
+			var birthdayCoupon = _repo.GetBirthdayCoupon();
+			var memberCoupons = members.Select(m => new MemberCoupon()
+								{
+									MemberId = m.Id,
+									CouponId = birthdayCoupon.CouponId,
+									CouponName = birthdayCoupon.CouponName,
+									CreateAt = DateTime.Now,
+									ExpireAt = DateTime.Now.AddDays((double)birthdayCoupon.Expiration)
+								});
+			_repo.AddBirthdayCoupons(memberCoupons);
+        }
         private async Task<IEnumerable<MemberCoupon>> DoThisToGetCouponMeetCriteria(int memberId)
 		{
 			var coupons = await _repo.GetUsableCoupon(memberId);
@@ -473,11 +504,15 @@ namespace SIERRA_Server.Models.Services
 			var waitToCheck = coupons.Except(couponsMeetCriteria);
 			//找出此會員的購物車
 			var cart = await _repo.GetDessertCart(memberId);
-			//算出總金額
-			var totalPrice = cart.DessertCartItems.Select(dci => dci.Dessert.Discounts.Any(d => d.StartAt < DateTime.Now && d.EndAt > DateTime.Now)
-												  ? (Math.Round((decimal)(dci.Specification.UnitPrice) * ((dci.Dessert.Discounts.First().DiscountPrice) / 100), 0, MidpointRounding.AwayFromZero))*dci.Quantity
-												  : dci.Specification.UnitPrice*dci.Quantity)
-												  .Sum();
+			var cartItems = cart.DessertCartItems.Select(dci => new DCIwithDiscountPrice()
+			{
+				UnitPrice = dci.Specification.UnitPrice,
+				DiscountPrice = dci.Dessert.Discounts.Any(d => d.StartAt < DateTime.Now && d.EndAt > DateTime.Now)
+												  ? dci.Dessert.Discounts.First().DiscountPrice : null,
+				Qty = dci.Quantity
+			});
+			var totalPrice = cartItems.Select(i => i.DiscountPrice == null ? i.UnitPrice * i.Qty : (Math.Round((decimal)i.UnitPrice * ((decimal)i.DiscountPrice / 100), 0, MidpointRounding.AwayFromZero)) * i.Qty).Sum();
+
 			//列出購物車所優商品的id
 			var cartItemsDessertIds = cart.DessertCartItems.Select(dci => dci.DessertId);
 			//列出id跟數量
@@ -525,19 +560,17 @@ namespace SIERRA_Server.Models.Services
 						var buyCount = 0;
 						for (int i = 0; i < dessertIdAndQtys.Length; i++)
 						{
-							if (buyCount >= neededCount)
-							{
-								couponsMeetCriteria.Add(coupon);
-								break;
-							}
-							else
-							{
-								if (discountGroupDessertIds.Contains(dessertIdAndQtys[i].Id))
+							if (discountGroupDessertIds.Contains(dessertIdAndQtys[i].Id))
 								{
 									buyCount += dessertIdAndQtys[i].Qty;
+									if (buyCount >= neededCount)
+									{
+										couponsMeetCriteria.Add(coupon);
+										break;
+									}
 								}
-								else continue;
-							}
+							else continue;
+							
 						}
 					}
 				}
@@ -545,11 +578,6 @@ namespace SIERRA_Server.Models.Services
 			return couponsMeetCriteria;
 		}
 
-        public async Task<object?> DidMemberPlayedGame(int memberId)
-        {
-            var dailyGame = await _repo.HasPlayedGame(memberId);
-			var weeklyGame =await _repo.HasPlayedWeeklyGame(memberId);
-			return new {DailyGame= dailyGame, WeeklyGame= weeklyGame};
-        }
+        
     }
 }

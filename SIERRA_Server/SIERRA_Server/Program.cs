@@ -15,6 +15,7 @@ using SIERRA_Server.Models.Repository.EFRepository;
 using SIERRA_Server.Models.Services;
 using System.Configuration;
 using System.Text;
+using Hangfire;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -39,6 +40,11 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowOrigin", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 
+builder.Services.AddHangfire(config =>
+{
+    config.UseSqlServerStorage(builder.Configuration.GetConnectionString("Sierra"));
+});
+builder.Services.AddHangfireServer();
 var MyAllowSpecificOrigins = "AllowAny";
 builder.Services.AddCors(options =>
 {
@@ -58,6 +64,7 @@ builder.Services.AddScoped<EmailHelper>();
 builder.Services.AddScoped<IDessertRepository, DessertEFRepository>();
 builder.Services.AddScoped<IDessertCategoryRepository, DessertCategoryEFRepository>();
 builder.Services.AddScoped<IDessertDiscountRepository, DessertDiscountDPRepository>();
+builder.Services.AddScoped<IDessertCartRepository, DessertCartEFRepository>();
 builder.Services.AddScoped<ILessonRepository,LessonCategoryEFRepository>();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -124,6 +131,8 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 // 授權(原本就有)
 app.UseAuthorization();
+// 查看定期作業執行結果
+app.UseHangfireDashboard("/dashboard");
 
 app.MapControllers();
 

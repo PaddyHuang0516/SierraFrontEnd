@@ -3,9 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using SIERRA_Server.Models.DTOs.Promotions;
 using SIERRA_Server.Models.EFModels;
 using SIERRA_Server.Models.Exts;
-using SIERRA_Server.Models.Infra;
+using SIERRA_Server.Models.Infra.Promotions;
 using SIERRA_Server.Models.Interfaces;
 using System.Linq;
+using static Microsoft.AspNetCore.Razor.Language.TagHelperMetadata;
 
 namespace SIERRA_Server.Models.Repository.EFRepository
 {
@@ -104,10 +105,8 @@ namespace SIERRA_Server.Models.Repository.EFRepository
         {
             var member = await _db.Members.FindAsync(memberId);
             var memberName = member.Username;
-            var cart = await _db.DessertCarts.Include(dc => dc.DessertCartItems)
-                                             .ThenInclude(dci => dci.Specification)
-                                             .ThenInclude(dci => dci.Dessert)
-                                             .ThenInclude(d => d.Discounts)
+            var cart = await _db.DessertCarts.Include(dc => dc.DessertCartItems).ThenInclude(dci => dci.Dessert).ThenInclude(d => d.Discounts)
+                                             .Include(dc=>dc.DessertCartItems).ThenInclude(dci=>dci.Specification)   
                                              .FirstOrDefaultAsync(dc => dc.Username == memberName);
             return cart;
         }
@@ -303,6 +302,48 @@ namespace SIERRA_Server.Models.Repository.EFRepository
                     return new { MemberCouponId = cart.MemberCouponId, DiscountPrice = cart.DiscountPrice };
                 }
             }
+        }
+
+		public void LetMembersCanPlayDailyGame()
+		{
+            var members = _db.Members;
+            foreach(var member in members)
+            {
+                member.DailyGamePlayed = false;
+            }
+            _db.SaveChanges();
+		}
+
+        public void LetMembersCanPlayWeeklyGame()
+        {
+            var members = _db.Members;
+            foreach (var member in members)
+            {
+                member.WeeklyGamePlayed = false;
+            }
+            _db.SaveChanges();
+        }
+
+        public IEnumerable<Member> GetBirthdayMemberInThisMonth()
+        {
+            var month = DateTime.Now.Month;
+            var members = _db.Members.Where(m=>m.Birth!=null).Where(m=>m.Birth.Value.Month==month);
+            return members;
+        }
+
+        public Coupon GetBirthdayCoupon()
+        {
+            var coupon = _db.CouponSettings.Include(s=>s.Coupon).Where(s=>s.CouponType==1).First().Coupon; 
+            return coupon;
+        }
+
+        public void AddBirthdayCoupons(IEnumerable<MemberCoupon> memberCoupons)
+        {
+            foreach(var memberCoupon in memberCoupons)
+            {
+                _db.MemberCoupons.Add(memberCoupon);
+            }
+            _db.SaveChanges();
         }
     }
 }

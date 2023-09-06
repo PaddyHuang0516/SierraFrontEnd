@@ -41,6 +41,8 @@ Desserts 部分
 	- Complete sentences
 	- Chat (answer question like customer service)
 	- Add Dessert , Categories ,DessertDiscountGroup , MemberCoupon
+
+[V] - Unit Test
 =========================================================
 Members 部分
 [V] - Login(with JWT Authentication & thress-layer Architecture)
@@ -56,7 +58,11 @@ Members 部分
 [V] - Modify MemberService.EditPassword() logic
 [V] - Rename ForgotPassword & ResetPassword
 [V] - Dapper
-
+[V] - Modify ErrorMessage
+[V] - Modify "127.0.0.1" to "localhost" 
+[V] - Add password rules
+[V] - Modify GoogleRegister
+[V] - Test git reset --mixed
 
 
 

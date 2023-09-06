@@ -1,7 +1,9 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 using SIERRA_Server.Models.DTOs.Desserts;
 using SIERRA_Server.Models.EFModels;
 using SIERRA_Server.Models.Interfaces;
+using System.Drawing.Printing;
 
 namespace SIERRA_Server.Models.Repository.EFRepository
 {
@@ -59,6 +61,11 @@ namespace SIERRA_Server.Models.Repository.EFRepository
              
                 dvm.Add(item);
             }
+            //  int totalMoldCake = moldCake.Count;
+            //int totalPages = (int)Math.Ceiling(totalMoldCake / (double)totalMoldCake);
+            //moldCake = moldCake.Skip(pageSize * (page - 1)).Take(pageSize);
+            //DessertsIndexDTO indexDTO = new DessertsIndexDTO();
+            //indexDTO.TotalPages = totalPages;
             return dvm;
         }
         public async Task<List<DessertsIndexDTO>> GetRoomTemperature()

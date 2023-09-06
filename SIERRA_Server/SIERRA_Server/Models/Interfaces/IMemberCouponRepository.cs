@@ -1,6 +1,6 @@
 ﻿using SIERRA_Server.Models.DTOs.Promotions;
 using SIERRA_Server.Models.EFModels;
-using SIERRA_Server.Models.Infra;
+using SIERRA_Server.Models.Infra.Promotions;
 
 namespace SIERRA_Server.Models.Interfaces
 {
@@ -32,5 +32,10 @@ namespace SIERRA_Server.Models.Interfaces
 		Task<IEnumerable<DiscountGroupItem>> FindSuggestProduct(int discountGroupId);
         Task<bool> CancelUsingCoupon(int memberId);
         Task<object?> GetUsingCoupon(int memberId);
+		void LetMembersCanPlayDailyGame();
+        void LetMembersCanPlayWeeklyGame();
+        IEnumerable<Member> GetBirthdayMemberInThisMonth();
+        Coupon GetBirthdayCoupon();
+        void AddBirthdayCoupons(IEnumerable<MemberCoupon> memberCoupons);
     }
 }

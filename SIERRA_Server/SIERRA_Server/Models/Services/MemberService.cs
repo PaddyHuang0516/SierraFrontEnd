@@ -58,15 +58,17 @@ namespace SIERRA_Server.Models.Services
 
 		public Result ValidLogin(LoginDTO dto)
 		{
-			var member = _repo.GetMemberByUsername(dto.Username);
-			if (member == null) return Result.Fail("帳密有誤");
+			var memberInDb = _repo.GetMemberByUsername(dto.Username);
+			if (memberInDb == null) return Result.Fail("帳密有誤");
 
-			if (member.IsConfirmed.HasValue == false || member.IsConfirmed.Value == false) return Result.Fail("會員資格尚未確認");
+			if (memberInDb.IsConfirmed == false) return Result.Fail("會員資格尚未確認，請至信箱點選驗證信");
+
+			if (memberInDb.IsBan == true) return Result.Fail("該帳號已被停權，無法登入");
 
 			var salt = _hashUtility.GetSalt();
 			var hashPassword = _hashUtility.ToSHA256(dto.Password, salt);
 
-			return string.Compare(member.EncryptedPassword, hashPassword) == 0
+			return string.Compare(memberInDb.EncryptedPassword, hashPassword) == 0
 				? Result.Success()
 				: Result.Fail("帳密有誤");
 		}
@@ -75,9 +77,12 @@ namespace SIERRA_Server.Models.Services
 		{
 			// 判斷username是否重複
 			var memberInDb = _repo.GetMemberByUsername(dto.Username);
-			if (memberInDb != null) return Result.Fail("帳號重複");
+			if (memberInDb != null) return Result.Fail("使用者名稱重複");
 
 			// 因在GoogleLogin()時就已經檢查過email了，故不再檢查
+
+			// 判斷密碼是否符合:長度為8~16，且必須包含至少1個英文字母和1個數字
+			if (!Regex.IsMatch(dto.Password, @"^(?=.*[a-zA-Z])(?=.*[0-9]).{8,16}$")) return Result.Fail("密碼長度為8~16，且須含英文字母和數字");
 
 			// 填入剩餘欄位的值
 			var salt = _hashUtility.GetSalt();
@@ -127,10 +132,13 @@ namespace SIERRA_Server.Models.Services
 		{
 			// 判斷username是否重複
 			var memberInDb = _repo.GetMemberByUsername(dto.Username);
-			if (memberInDb != null) return Result.Fail("帳號重複");
+			if (memberInDb != null) return Result.Fail("使用者名稱重複");
 
 			// 判斷email是否重複
-			if (_repo.IsEmailExist(dto.Email)) return Result.Fail("信箱已註冊");
+			if (_repo.IsEmailExist(dto.Email)) return Result.Fail("電子信箱已註冊");
+
+			// 判斷密碼是否符合:長度為8~16，且必須包含至少1個英文字母和1個數字
+			if (!Regex.IsMatch(dto.Password, @"^(?=.*[a-zA-Z])(?=.*[0-9]).{8,16}$")) return Result.Fail("密碼長度為8~16，且須含英文字母和數字");
 
 			// 填入剩餘欄位的值
 			var salt = _hashUtility.GetSalt();
@@ -149,7 +157,7 @@ namespace SIERRA_Server.Models.Services
 			// 寄驗證信
 			var memberId = _repo.GetMemberIdByUsername(dto.Username);
 			//var confirmLink = _urlHelper.Action("ActiveRegister", "Members", new { IdToString, confirmCode });
-			var confirmUrl = $"http://127.0.0.1:5501/RegisterActive.html?memberId={memberId}&confirmCode={confirmCode}";
+			var confirmUrl = $"http://localhost:5501/RegisterActive.html?memberId={memberId}&confirmCode={confirmCode}";
 			_emailHelper.SendConfirmRegisterEmail(dto.Email, confirmUrl, dto.Username);
 
 			return Result.Success();
@@ -187,7 +195,7 @@ namespace SIERRA_Server.Models.Services
 
 			// 寄驗證信
 			var memberId = _repo.GetMemberIdByUsername(dto.Username);
-			var confirmUrl = $"http://127.0.0.1:5501/ResetPassword.html?memberId={memberId}&confirmCode={confirmCode}";
+			var confirmUrl = $"http://localhost:5501/ResetPassword.html?memberId={memberId}&confirmCode={confirmCode}";
 			_emailHelper.SendForgotPasswordEmail(dto.Email, confirmUrl, dto.Username);
 
 			return Result.Success();
@@ -197,7 +205,7 @@ namespace SIERRA_Server.Models.Services
 		{
 			// 檢查該帳號是否存在
 			var memberInDb = _repo.GetMemberById(dto.MemberId);
-			if (memberInDb == null || memberInDb.ConfirmCode != dto.ConfirmCode) return Result.Fail("請檢查驗證連結是否有更動，若仍失敗請聯繫工程師");
+			if (memberInDb == null || memberInDb.ConfirmCode != dto.ConfirmCode) return Result.Fail("重設失敗，請檢查驗證連結是否有更動");
 
 			// 更新密碼，並將ConfirmCode清空
 			var salt = _hashUtility.GetSalt();
@@ -259,7 +267,7 @@ namespace SIERRA_Server.Models.Services
 
 			if (!ValidPhone(dto.Phone))
 			{
-				return Result.Fail("電話號碼應為10位數字或全空");
+				return Result.Fail("電話號碼格式錯誤");
 			}
 
 			memberInDb.Address = dto.Address;
